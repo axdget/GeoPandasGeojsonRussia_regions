@@ -93,3 +93,59 @@ gdf = gpd.read_file("krasnodar.gpkg", layer="rayony")
 | `pickle` | сохранить Python-объект как есть |
 | `geojson` | обмен геоданными, удобно смотреть как текст |
 | `gpkg` | хороший формат для серьёзных геоданных |
+
+
+### GPKG два слоя: 
+**создаёт один файл krasnodar.gpkg и кладёт в него 2 слоя:**
+
+rayony — полигоны районов
+centers — точки-центры для подписей/номеров
+
+gdf.to_file при driver="GPKG" не перезаписывает файл а если слой не совпадает с тем что лежит в записываемым файлом, то gdf.to_file дописывает файл
+
+```python
+import geopandas as gpd
+from pathlib import Path
+
+# 1. Читаем GeoJSON
+gdf = gpd.read_file("KrasnodarskKrayRayony.GeoJSON")
+
+# 2. Файл GeoPackage, который создадим
+gpkg_path = "krasnodar.gpkg"
+
+# 3. Если такой файл уже есть — удаляем, чтобы начать с чистого файла
+if Path(gpkg_path).exists():
+    Path(gpkg_path).unlink()
+
+# 4. Первый слой: районы как полигоны
+gdf.to_file(
+    gpkg_path,
+    layer="rayony",
+    driver="GPKG",
+    index=False
+)
+
+# 5. Второй слой: точки внутри районов
+centers = gdf.copy()
+centers["geometry"] = centers.geometry.representative_point()
+
+centers.to_file(
+    gpkg_path,
+    layer="centers",
+    driver="GPKG",
+    index=False
+)
+
+# 6. Проверяем, какие слои теперь есть внутри файла
+print(gpd.list_layers(gpkg_path))
+
+# 7. Читаем каждый слой отдельно
+rayony = gpd.read_file(gpkg_path, layer="rayony")
+centers = gpd.read_file(gpkg_path, layer="centers")
+
+print("Слой rayony:")
+print(rayony.head())
+
+print("Слой centers:")
+print(centers.head())
+```
